@@ -1,0 +1,15 @@
+CompileFlags:
+  Add: [
+    -xc,
+    -std=c++17,
+    -Wall,
+    -Wextra,
+    -Wcast-qual
+    -Wdiv-by-zero
+    -Wno-bitwise-instead-of-logical
+    -fno-omit-frame-pointer
+    -fno-exceptions
+    -isystem /usr/include,
+    -isystem /usr/local/include,
+    -I include
+  ]

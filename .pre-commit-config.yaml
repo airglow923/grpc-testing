@@ -1,0 +1,41 @@
+# Install:
+#  brew update
+#  brew install pre-commit
+#  brew install clang-format
+#  pre-commit install
+#
+# Standalone Run:
+# Manually run pre-commit on the current checked-in files (git add'd).
+#  pre-commit run
+#
+# Run pre-commit on all files
+#  pre-commit run --all-files
+#
+# Format all files in a directory dir/
+#  find dir/ -iname *.h -o -iname *.c | xargs clang-format -i
+#
+# Git show whitespaces:
+#  git config diff.wsErrorHighlight all
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.3.0
+    hooks:
+      - id: check-added-large-files
+        args: ['--maxkb=8192']
+      - id: trailing-whitespace
+      - id: check-case-conflict
+      - id: check-merge-conflict
+      - id: end-of-file-fixer
+      - id: check-yaml
+        exclude: ^tests/data/yaml/
+      - id: pretty-format-json
+        args: [--indent=4, --no-sort-keys, --autofix]
+  - repo: https://github.com/cheshirekow/cmake-format-precommit
+    rev: v0.6.13
+    hooks:
+    - id: cmake-format
+  - repo: https://github.com/pocc/pre-commit-hooks
+    rev: v1.3.5
+    hooks:
+      - id: clang-format
+        args: [-i]
