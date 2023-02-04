@@ -1,0 +1,15 @@
+[*]
+charset = utf-8
+end_of_line = lf
+indent_size = 2
+indent_style = space
+insert_final_newline = false
+tab_width = 2
+
+[{*.bash,*.sh,*.zsh}]
+max_line_length = 80
+shell_binary_ops_start_line = false
+shell_keep_column_alignment_padding = false
+shell_minify_program = false
+shell_redirect_followed_by_space = false
+shell_switch_cases_indented = false
