@@ -12,6 +12,8 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 list(INSERT CMAKE_MODULE_PATH 0 ${CMAKE_CURRENT_LIST_DIR}/cmake)
 
+include(utils)
+
 find_package(PkgConfig REQUIRED)
 find_package(Threads REQUIRED)
 
