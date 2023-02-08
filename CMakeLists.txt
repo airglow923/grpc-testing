@@ -12,43 +12,14 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 list(INSERT CMAKE_MODULE_PATH 0 ${CMAKE_CURRENT_LIST_DIR}/cmake)
 
-include(utils)
-
 find_package(PkgConfig REQUIRED)
 find_package(Threads REQUIRED)
 
 pkg_search_module(PROTOBUF REQUIRED protobuf)
 pkg_search_module(GRPC REQUIRED grpc)
 
-set(COMMON_WARNING_FLAGS -Wall -Wextra -Werror -Wcast-qual)
-
-set(COMMON_COMPILE_FLAGS ${COMMON_WARNING_FLAGS} -march=native -flto)
-
-set(COVERAGE_FLAGS -ftest-coverage -fprofile-arcs -pg)
-
-set(ASAN_FLAGS -fsanitize=address -fsanitize-address-use-after-scope
-               -fsanitize-recover=address -fno-omit-frame-pointer)
-
-set(TSAN_FLAGS -fsanitize=thread)
-
-set(DEBUG_COMPILE_FLAGS -Og)
-
-set(RELEASE_COMPILE_FLAGS)
-
-set(COMMON_LINK_FLAGS -flto $<$<CONFIG:Debug>:${COVERAGE_FLAGS}>
-                      ${CMAKE_THREAD_LIBS_INIT})
-
-set(DEBUG_LINK_FLAGS)
-set(RELEASE_LINK_FLAGS)
-
-set(THIRD_PARTY_CFLAGS ${PROTOBUF_CFLAGS} ${GRPC_CFLGAS})
-
-set(THIRD_PARTY_INCLUDE_DIRS ${PROTOBUF_INCLUDE_DIRS} ${GRPC_INCLUDE_DIRS})
-
-set(THIRD_PARTY_LINK_DIRECTORIES ${PROTOBUF_LINK_DIRECTORIES}
-                                 ${GRPC_LINK_DIRECTORIES})
-
-set(THIRD_PARTY_LINK_LIBRARIES ${PROTOBUF_LIBRARIES} ${GRPC_LIBRARIES})
+include(utils)
+include(compiler_flags)
 
 set(LIBRARY_OBJLIB ${PROJECT_NAME}_OBJLIB)
 set(LIBRARY_SHARED ${PROJECT_NAME}_SHARED)
