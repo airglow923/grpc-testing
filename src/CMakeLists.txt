@@ -44,5 +44,6 @@ set_target_properties(${LIBRARY_SHARED} ${LIBRARY_STATIC}
 foreach(EXE ${EXES})
   set(EXECUTABLE_NAME ${PROJECT_NAME}-${EXE})
   target_sources(${EXECUTABLE_NAME} PRIVATE ${${EXE}_SOURCE})
-  target_link_libraries(${EXECUTABLE_NAME} PRIVATE ${LIBRARY_OBJLIB})
+  target_link_libraries(${EXECUTABLE_NAME} PRIVATE ${LIBRARY_OBJLIB}
+                                                   ${LIBRARY_PROTO})
 endforeach()
