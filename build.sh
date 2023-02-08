@@ -143,7 +143,7 @@ if (($(is_true "${do_rm_build_dir}"))); then
 fi
 
 if (($(is_false "${do_rm_build_dir}"))) && (($(is_true "${do_clean}"))); then
-  ${CMAKE} --build "${BUILD_DIR}" --target clean
+  "${CMAKE}" --build "${BUILD_DIR}" --target clean
 fi
 
 "${CMAKE}" \
@@ -154,7 +154,7 @@ fi
   "${CMAKE_OPTIONS}" \
   "${ROOT_DIR}"
 
-${CMAKE} --build "${BUILD_DIR}" -j "$(nproc)"
+"${CMAKE}" --build "${BUILD_DIR}" -j "$(nproc)"
 
 if (($(is_true "${install}"))); then
   "${CMAKE}" --build "${BUILD_DIR}" --target install
