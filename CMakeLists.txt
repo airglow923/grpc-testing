@@ -15,15 +15,13 @@ list(INSERT CMAKE_MODULE_PATH 0 ${CMAKE_CURRENT_LIST_DIR}/cmake)
 find_package(PkgConfig REQUIRED)
 find_package(Threads REQUIRED)
 
-pkg_search_module(PROTOBUF REQUIRED protobuf)
-pkg_search_module(GRPC REQUIRED grpc)
-
 include(utils)
 include(compiler_flags)
 
-set(LIBRARY_OBJLIB ${PROJECT_NAME}_OBJLIB)
-set(LIBRARY_SHARED ${PROJECT_NAME}_SHARED)
-set(LIBRARY_STATIC ${PROJECT_NAME}_STATIC)
+set(LIBRARY_PROTO ${PROJECT_NAME}-PROTO)
+set(LIBRARY_OBJLIB ${PROJECT_NAME}-OBJLIB)
+set(LIBRARY_SHARED ${PROJECT_NAME}-SHARED)
+set(LIBRARY_STATIC ${PROJECT_NAME}-STATIC)
 set(EXECUTABLE_CLIENT ${PROJECT_NAME}-client)
 set(EXECUTABLE_SERVER ${PROJECT_NAME}-server)
 
@@ -33,6 +31,7 @@ add_library(${LIBRARY_STATIC} STATIC)
 add_executable(${EXECUTABLE_CLIENT})
 add_executable(${EXECUTABLE_SERVER})
 
+add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/proto)
 add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/include)
 add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/src)
 

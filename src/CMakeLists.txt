@@ -14,23 +14,18 @@ set_target_properties(${LIBRARY_OBJLIB} PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_compile_options(
   ${LIBRARY_OBJLIB}
   PUBLIC ${COMMON_COMPILE_FLAGS} $<$<CONFIG:Debug>:${DEBUG_COMPILE_FLAGS}>
-         $<$<CONFIG:Release>:${RELEASE_COMPILE_FLAGS}> ${THIRD_PARTY_CFLAGS})
+         $<$<CONFIG:Release>:${RELEASE_COMPILE_FLAGS}>)
 
 target_include_directories(
-  ${LIBRARY_OBJLIB}
-  PUBLIC $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
-         $<INSTALL_INTERFACE:${PROJECT_SOURCE_DIR}/include>
-         ${THIRD_PARTY_INCLUDE_DIRS})
+  ${LIBRARY_OBJLIB} PUBLIC $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
+                           $<INSTALL_INTERFACE:${PROJECT_SOURCE_DIR}/include>)
 
 target_link_options(
   ${LIBRARY_OBJLIB} PUBLIC ${COMMON_LINK_FLAGS}
   $<$<CONFIG:Debug>:${DEBUG_LINK_FLAGS}>
   $<$<CONFIG:Release>:${RELEASE_LINK_FLAGS}>)
 
-target_link_directories(${LIBRARY_OBJLIB} PUBLIC
-                        ${THIRD_PARTY_LINK_DIRECTORIES})
-
-target_link_libraries(${LIBRARY_OBJLIB} PUBLIC ${THIRD_PARTY_LINK_LIBRARIES})
+target_link_libraries(${LIBRARY_OBJLIB} PUBLIC ${LIBRARY_PROTO})
 
 add_custom_command(
   OUTPUT ${SOURCE_FILES} POST_BUILD
@@ -48,8 +43,6 @@ set_target_properties(${LIBRARY_SHARED} ${LIBRARY_STATIC}
 
 foreach(EXE ${EXES})
   set(EXECUTABLE_NAME ${PROJECT_NAME}-${EXE})
-
   target_sources(${EXECUTABLE_NAME} PRIVATE ${${EXE}_SOURCE})
-
   target_link_libraries(${EXECUTABLE_NAME} PRIVATE ${LIBRARY_OBJLIB})
 endforeach()
