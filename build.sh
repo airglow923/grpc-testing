@@ -26,6 +26,8 @@ Available options:
 -d, --coverage          Enable coverage
 -c, --clean             Run "${CMAKE} --build BUILD_DIR --target clean"
 -C, --remove-build-dir  Remove BUILD_DIR
+-i, --install           Install
+-u, --uninstall         Uninstall
 EOF
   exit
 }
@@ -41,9 +43,27 @@ die() {
   exit "$code"
 }
 
+is_true() {
+  if [ "${1}" = "1" ] || [ "${1}" = "true" ]; then
+    echo "1"
+  else
+    echo "0"
+  fi
+}
+
+is_false() {
+  if [ "${1}" = "0" ] || [ "${1}" = "false" ]; then
+    echo "1"
+  else
+    echo "0"
+  fi
+}
+
 parse_params() {
   do_clean=false
   do_rm_build_dir=false
+  install=false
+  uninstall=false
 
   while :; do
     case "${1-}" in
@@ -83,6 +103,14 @@ parse_params() {
       do_rm_build_dir=true
       ;;
 
+    -i | --install)
+      install=true
+      ;;
+
+    -u | --uninstall)
+      uninstall=true
+      ;;
+
     -?*)
       die "Unknown option: $1"
       ;;
@@ -94,12 +122,21 @@ parse_params() {
     shift
   done
 
+  if (($(is_true "${install}"))) && (($(is_true "${uninstall}"))); then
+    die "Please select either install or uninstall."
+  fi
+
   return 0
 }
 
 parse_params "$@"
 
-mkdir -p build
+mkdir -p "${BUILD_DIR}"
+
+if (($(is_true "${uninstall}"))); then
+  "${CMAKE}" --build "${BUILD_DIR}" --target uninstall
+  exit
+fi
 
 if [ $do_rm_build_dir ]; then
   rm -rf "${BUILD_DIR}"
@@ -109,7 +146,7 @@ if [ ! $do_rm_build_dir ] && [ $do_clean ]; then
   ${CMAKE} --build "${BUILD_DIR}" --target clean
 fi
 
-${CMAKE} \
+"${CMAKE}" \
   -B "${BUILD_DIR}" \
   -G "${CMAKE_GENERATOR}" \
   -DCMAKE_BUILD_TYPE="${BUILD_TYPE}" \
@@ -118,3 +155,7 @@ ${CMAKE} \
   "${ROOT_DIR}"
 
 ${CMAKE} --build "${BUILD_DIR}" -j "$(nproc)"
+
+if (($(is_true "${install}"))); then
+  "${CMAKE}" --build "${BUILD_DIR}" --target install
+fi
