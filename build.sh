@@ -138,11 +138,11 @@ if (($(is_true "${uninstall}"))); then
   exit
 fi
 
-if [ $do_rm_build_dir ]; then
+if (($(is_true "${do_rm_build_dir}"))); then
   rm -rf "${BUILD_DIR}"
 fi
 
-if [ ! $do_rm_build_dir ] && [ $do_clean ]; then
+if (($(is_false "${do_rm_build_dir}"))) && (($(is_true "${do_clean}"))); then
   ${CMAKE} --build "${BUILD_DIR}" --target clean
 fi
 
