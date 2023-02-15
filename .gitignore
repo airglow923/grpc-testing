@@ -94,3 +94,7 @@ dkms.conf
 .ccls-cache/
 build/
 compile_commands.json
+
+# debug
+peda-session-gen-keys.txt
+.gdb_history
