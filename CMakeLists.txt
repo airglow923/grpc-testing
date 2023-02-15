@@ -14,6 +14,8 @@ list(INSERT CMAKE_MODULE_PATH 0 ${CMAKE_CURRENT_LIST_DIR}/cmake)
 
 find_package(PkgConfig REQUIRED)
 find_package(Threads REQUIRED)
+find_package(OpenSSL REQUIRED)
+find_package(Fmt REQUIRED)
 
 include(utils)
 include(compiler_flags)

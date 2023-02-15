@@ -25,7 +25,8 @@ target_link_options(
   $<$<CONFIG:Debug>:${DEBUG_LINK_FLAGS}>
   $<$<CONFIG:Release>:${RELEASE_LINK_FLAGS}>)
 
-target_link_libraries(${LIBRARY_OBJLIB} PUBLIC ${LIBRARY_PROTO})
+target_link_libraries(${LIBRARY_OBJLIB} PUBLIC ${LIBRARY_PROTO} OpenSSL::SSL
+                                               OpenSSL::Crypto fmt::fmt)
 
 add_custom_command(
   OUTPUT ${SOURCE_FILES} POST_BUILD
