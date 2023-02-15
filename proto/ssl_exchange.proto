@@ -1,0 +1,11 @@
+syntax = "proto3";
+
+package hyundeok.grpc;
+
+service SslExchange {
+  rpc ExchangeSslPublicKey (SslPublicKey) returns (SslPublicKey) {}
+}
+
+message SslPublicKey {
+  string pubkey = 1;
+}

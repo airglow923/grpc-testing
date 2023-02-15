@@ -1,21 +1,3 @@
-/*
- *
- * Copyright 2015 gRPC authors.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- *
- */
-
 #include <iostream>
 #include <memory>
 #include <string>
@@ -24,49 +6,53 @@
 #include <grpcpp/grpcpp.h>
 #include <grpcpp/health_check_service_interface.h>
 
-#include "helloworld.grpc.pb.h"
+#include <fmt/format.h>
+#include <fmt/ostream.h>
 
-using grpc::Server;
-using grpc::ServerBuilder;
-using grpc::ServerContext;
-using grpc::Status;
+#include "hyundeok/grpc/chrono.h"
+#include "hyundeok/grpc/ssl.h"
 
-// Logic and data behind the server's behavior.
-class GreeterServiceImpl final : public Greeter::Service {
-  Status
-  SayHello([[maybe_unused]] ServerContext *context, const HelloRequest *request,
-           HelloReply *reply) override {
-    std::string prefix("Hello ");
-    reply->set_message(prefix + request->name());
-    return Status::OK;
+#include "ssl_exchange.grpc.pb.h"
+
+using hyundeok::grpc::GetLocalTimestampIso8601;
+using hyundeok::grpc::GetPubKeyFromPem;
+using hyundeok::grpc::SslExchange;
+using hyundeok::grpc::SslPublicKey;
+
+class SslExchangeServiceImpl final : public SslExchange::Service {
+  auto
+  ExchangeSslPublicKey([[maybe_unused]] grpc::ServerContext *context,
+                       const SslPublicKey *in, SslPublicKey *out)
+      -> grpc::Status {
+    fmt::print("Received client public key: {} on {}\n", in->pubkey(),
+               GetLocalTimestampIso8601());
+
+    auto pubkey{GetPubKeyFromPem("/tmp/gen-keys-server.pem", "")};
+
+    out->set_pubkey(pubkey);
+
+    fmt::print("Sending server public key:  {} on {}\n", pubkey,
+               GetLocalTimestampIso8601());
+
+    return grpc::Status::OK;
   }
 };
 
-void
-RunServer() {
-  std::string server_address("0.0.0.0:50051");
-  GreeterServiceImpl service;
+auto
+main([[maybe_unused]] int arc, [[maybe_unused]] char **argv) -> int {
+  constexpr auto server_addr{"localhost:50051"};
+  SslExchangeServiceImpl service;
 
   grpc::EnableDefaultHealthCheckService(true);
   grpc::reflection::InitProtoReflectionServerBuilderPlugin();
-  ServerBuilder builder;
-  // Listen on the given address without any authentication mechanism.
-  builder.AddListeningPort(server_address, grpc::InsecureServerCredentials());
-  // Register "service" as the instance through which we'll communicate with
-  // clients. In this case it corresponds to an *synchronous* service.
+
+  grpc::ServerBuilder builder;
+  builder.AddListeningPort(server_addr, grpc::InsecureServerCredentials());
   builder.RegisterService(&service);
-  // Finally assemble the server.
-  std::unique_ptr<Server> server(builder.BuildAndStart());
-  std::cout << "Server listening on " << server_address << std::endl;
 
-  // Wait for the server to shutdown. Note that some other thread must be
-  // responsible for shutting down the server for this call to ever return.
+  std::unique_ptr<grpc::Server> server(builder.BuildAndStart());
+
+  fmt::print("Server listening on {}\n", server_addr);
+
   server->Wait();
-}
-
-int
-main([[maybe_unused]] int argc, [[maybe_unused]] char **argv) {
-  RunServer();
-
-  return 0;
 }

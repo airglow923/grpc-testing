@@ -1,103 +1,60 @@
-/*
- *
- * Copyright 2015 gRPC authors.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- *
- */
-
 #include <iostream>
 #include <memory>
 #include <string>
 
 #include <grpcpp/grpcpp.h>
 
-#include "helloworld.grpc.pb.h"
+#include <fmt/format.h>
+#include <fmt/ostream.h>
 
-using grpc::Channel;
-using grpc::ClientContext;
-using grpc::Status;
+#include "hyundeok/grpc/chrono.h"
+#include "hyundeok/grpc/ssl.h"
 
-class GreeterClient {
+#include "ssl_exchange.grpc.pb.h"
+
+using hyundeok::grpc::GetLocalTimestampIso8601;
+using hyundeok::grpc::GetPubKeyFromPem;
+using hyundeok::grpc::SslExchange;
+using hyundeok::grpc::SslPublicKey;
+
+class SslExchangeClient {
 public:
-  GreeterClient(std::shared_ptr<Channel> channel)
-      : stub_(Greeter::NewStub(channel)) {}
+  SslExchangeClient(std::shared_ptr<grpc::Channel> channel)
+      : stub_(SslExchange::NewStub(channel)) {}
 
-  // Assembles the client's payload, sends it and presents the response back
-  // from the server.
-  std::string
-  SayHello(const std::string &user) {
-    // Data we are sending to the server.
-    HelloRequest request;
-    request.set_name(user);
+  auto
+  ExchangeSslPublicKey() -> std::string {
+    SslPublicKey client_pubkey;
 
-    // Container for the data we expect from the server.
-    HelloReply reply;
+    client_pubkey.set_pubkey(GetPubKeyFromPem("/tmp/gen-keys-client.pem", ""));
 
-    // Context for the client. It could be used to convey extra information to
-    // the server and/or tweak certain RPC behaviors.
-    ClientContext context;
+    fmt::print("Sending client public key:  {} on {}\n", client_pubkey.pubkey(),
+               GetLocalTimestampIso8601());
 
-    // The actual RPC.
-    Status status = stub_->SayHello(&context, request, &reply);
+    SslPublicKey server_pubkey;
+    grpc::ClientContext context;
 
-    // Act upon its status.
+    grpc::Status status =
+        stub_->ExchangeSslPublicKey(&context, client_pubkey, &server_pubkey);
+
     if (status.ok()) {
-      return reply.message();
+      return fmt::format("Received server public key: {} on {}",
+                         server_pubkey.pubkey(), GetLocalTimestampIso8601());
     } else {
-      std::cout << status.error_code() << ": " << status.error_message()
-                << std::endl;
+      fmt::print(std::cerr, "{}: {}\n", status.error_code(),
+                 status.error_message());
       return "RPC failed";
     }
   }
 
 private:
-  std::unique_ptr<Greeter::Stub> stub_;
+  std::unique_ptr<SslExchange::Stub> stub_;
 };
 
 int
-main(int argc, char **argv) {
-  // Instantiate the client. It requires a channel, out of which the actual RPCs
-  // are created. This channel models a connection to an endpoint specified by
-  // the argument "--target=" which is the only expected argument.
-  // We indicate that the channel isn't authenticated (use of
-  // InsecureChannelCredentials()).
-  std::string target_str;
-  std::string arg_str("--target");
-  if (argc > 1) {
-    std::string arg_val = argv[1];
-    size_t start_pos = arg_val.find(arg_str);
-    if (start_pos != std::string::npos) {
-      start_pos += arg_str.size();
-      if (arg_val[start_pos] == '=') {
-        target_str = arg_val.substr(start_pos + 1);
-      } else {
-        std::cout << "The only correct argument syntax is --target="
-                  << std::endl;
-        return 0;
-      }
-    } else {
-      std::cout << "The only acceptable argument is --target=" << std::endl;
-      return 0;
-    }
-  } else {
-    target_str = "localhost:50051";
-  }
-  GreeterClient greeter(
-      grpc::CreateChannel(target_str, grpc::InsecureChannelCredentials()));
-  std::string user("world");
-  std::string reply = greeter.SayHello(user);
-  std::cout << "Greeter received: " << reply << std::endl;
+main([[maybe_unused]] int argc, [[maybe_unused]] char **argv) {
+  SslExchangeClient client(grpc::CreateChannel(
+      "localhost:50051", grpc::InsecureChannelCredentials()));
 
-  return 0;
+  fmt::print("{}\n", client.ExchangeSslPublicKey());
 }
