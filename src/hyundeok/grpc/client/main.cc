@@ -13,9 +13,9 @@
 #include "ssl_exchange.grpc.pb.h"
 
 using hyundeok::grpc::GetLocalTimestampIso8601;
-using hyundeok::grpc::GetPubKeyFromPem;
 using hyundeok::grpc::SslExchange;
 using hyundeok::grpc::SslPublicKey;
+using hyundeok::grpc::X509ReadPubKey;
 
 class SslExchangeClient {
 public:
@@ -26,7 +26,7 @@ public:
   ExchangeSslPublicKey() -> std::string {
     SslPublicKey client_pubkey;
 
-    client_pubkey.set_pubkey(GetPubKeyFromPem("/tmp/gen-keys-client.pem", ""));
+    client_pubkey.set_pubkey(X509ReadPubKey("/tmp/gen-keys-client.pem", ""));
 
     fmt::print("Sending client public key:  {} on {}\n", client_pubkey.pubkey(),
                GetLocalTimestampIso8601());
@@ -51,8 +51,8 @@ private:
   std::unique_ptr<SslExchange::Stub> stub_;
 };
 
-int
-main([[maybe_unused]] int argc, [[maybe_unused]] char **argv) {
+auto
+main([[maybe_unused]] int argc, [[maybe_unused]] char **argv) -> int {
   SslExchangeClient client(grpc::CreateChannel(
       "localhost:50051", grpc::InsecureChannelCredentials()));
 

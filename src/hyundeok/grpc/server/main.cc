@@ -15,9 +15,9 @@
 #include "ssl_exchange.grpc.pb.h"
 
 using hyundeok::grpc::GetLocalTimestampIso8601;
-using hyundeok::grpc::GetPubKeyFromPem;
 using hyundeok::grpc::SslExchange;
 using hyundeok::grpc::SslPublicKey;
+using hyundeok::grpc::X509ReadPubKey;
 
 class SslExchangeServiceImpl final : public SslExchange::Service {
   auto
@@ -27,7 +27,7 @@ class SslExchangeServiceImpl final : public SslExchange::Service {
     fmt::print("Received client public key: {} on {}\n", in->pubkey(),
                GetLocalTimestampIso8601());
 
-    auto pubkey{GetPubKeyFromPem("/tmp/gen-keys-server.pem", "")};
+    auto pubkey{X509ReadPubKey("/tmp/gen-keys-server.pem", "")};
 
     out->set_pubkey(pubkey);
 
