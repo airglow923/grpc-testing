@@ -1,6 +1,7 @@
 #include <iostream>
 #include <memory>
 #include <string>
+#include <string_view>
 
 #include <grpcpp/grpcpp.h>
 
@@ -13,9 +14,11 @@
 #include "ssl_exchange.grpc.pb.h"
 
 using hyundeok::grpc::GetLocalTimestampIso8601;
+using hyundeok::grpc::PemPrivateKeyRead;
+using hyundeok::grpc::PemPublicKeyReadHex;
+using hyundeok::grpc::PemX509Read;
 using hyundeok::grpc::SslExchange;
 using hyundeok::grpc::SslPublicKey;
-using hyundeok::grpc::X509ReadPubKey;
 
 class SslExchangeClient {
 public:
@@ -23,10 +26,10 @@ public:
       : stub_(SslExchange::NewStub(channel)) {}
 
   auto
-  ExchangeSslPublicKey() -> std::string {
+  ExchangeSslPublicKey(std::string_view cert_path) -> std::string {
     SslPublicKey client_pubkey;
 
-    client_pubkey.set_pubkey(X509ReadPubKey("/tmp/gen-keys-client.pem", ""));
+    client_pubkey.set_pubkey(PemPublicKeyReadHex(cert_path, ""));
 
     fmt::print("Sending client public key:  {} on {}\n", client_pubkey.pubkey(),
                GetLocalTimestampIso8601());
@@ -52,9 +55,21 @@ private:
 };
 
 auto
-main([[maybe_unused]] int argc, [[maybe_unused]] char **argv) -> int {
-  SslExchangeClient client(grpc::CreateChannel(
-      "localhost:50051", grpc::InsecureChannelCredentials()));
+main(int argc, char **argv) -> int {
+  if (argc < 3) {
+    fmt::print(std::cerr, "Usage: {} PATH_TO_PEM PATH_TO_PRIVATE_KEY\n",
+               argv[0]);
+    return -1;
+  }
 
-  fmt::print("{}\n", client.ExchangeSslPublicKey());
+  auto ssl_opts{grpc::SslCredentialsOptions()};
+  ssl_opts.pem_private_key = PemPrivateKeyRead(argv[2], "");
+  ssl_opts.pem_cert_chain = PemX509Read(argv[1], "");
+
+  auto ssl_creds{grpc::SslCredentials(ssl_opts)};
+  auto channel{grpc::CreateChannel("localhost:50051", ssl_creds)};
+
+  SslExchangeClient client{channel};
+
+  fmt::print("{}\n", client.ExchangeSslPublicKey(argv[1]));
 }

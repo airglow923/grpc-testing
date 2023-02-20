@@ -15,19 +15,21 @@
 #include "ssl_exchange.grpc.pb.h"
 
 using hyundeok::grpc::GetLocalTimestampIso8601;
+using hyundeok::grpc::PemPrivateKeyRead;
+using hyundeok::grpc::PemPublicKeyReadHex;
+using hyundeok::grpc::PemX509Read;
 using hyundeok::grpc::SslExchange;
 using hyundeok::grpc::SslPublicKey;
-using hyundeok::grpc::X509ReadPubKey;
 
 class SslExchangeServiceImpl final : public SslExchange::Service {
   auto
   ExchangeSslPublicKey([[maybe_unused]] grpc::ServerContext *context,
                        const SslPublicKey *in, SslPublicKey *out)
-      -> grpc::Status {
+      -> grpc::Status override {
     fmt::print("Received client public key: {} on {}\n", in->pubkey(),
                GetLocalTimestampIso8601());
 
-    auto pubkey{X509ReadPubKey("/tmp/gen-keys-server.pem", "")};
+    auto pubkey{PemPublicKeyReadHex("/tmp/gen-keys-server.pem", "")};
 
     out->set_pubkey(pubkey);
 
@@ -39,15 +41,28 @@ class SslExchangeServiceImpl final : public SslExchange::Service {
 };
 
 auto
-main([[maybe_unused]] int arc, [[maybe_unused]] char **argv) -> int {
+main(int argc, char **argv) -> int {
+  if (argc < 3) {
+    fmt::print(std::cerr, "Usage: {} PATH_TO_PEM PATH_TO_PRIVATE_KEY\n",
+               argv[0]);
+    return -1;
+  }
+
   constexpr auto server_addr{"localhost:50051"};
   SslExchangeServiceImpl service;
 
   grpc::EnableDefaultHealthCheckService(true);
   grpc::reflection::InitProtoReflectionServerBuilderPlugin();
 
+  auto ssl_opts{grpc::SslServerCredentialsOptions(
+      GRPC_SSL_REQUEST_AND_REQUIRE_CLIENT_CERTIFICATE_AND_VERIFY)};
+  ssl_opts.pem_key_cert_pairs.push_back(
+      {PemPrivateKeyRead(argv[2], ""), PemX509Read(argv[1], "")});
+
+  auto ssl_creds{grpc::SslServerCredentials(ssl_opts)};
+
   grpc::ServerBuilder builder;
-  builder.AddListeningPort(server_addr, grpc::InsecureServerCredentials());
+  builder.AddListeningPort(server_addr, ssl_creds);
   builder.RegisterService(&service);
 
   std::unique_ptr<grpc::Server> server(builder.BuildAndStart());
