@@ -124,21 +124,25 @@ X509NameNew(const std::string &country, const std::string &state,
 }
 
 auto
-X509ExtensionAdd(X509 *cert, int nid, std::string_view value) -> int {
-  SmartX509Extension ex{
-      X509V3_EXT_conf_nid(nullptr, nullptr, nid, value.data()),
-      X509_EXTENSION_free};
+X509ExtensionAdd(X509 *issuer, X509 *subject, int nid, std::string_view value)
+    -> int {
+  X509V3_CTX ctx;
+
+  X509V3_set_ctx(&ctx, issuer ? issuer : subject, subject, nullptr, nullptr, 0);
+
+  SmartX509Extension ex{X509V3_EXT_conf_nid(nullptr, &ctx, nid, value.data()),
+                        X509_EXTENSION_free};
 
   if (ex.get() == nullptr) {
     fmt::print(std::cerr, "X509V3_EXT_conf_nid failed\n");
     return 0;
   }
 
-  return X509_add_ext(cert, ex.get(), -1);
+  return X509_add_ext(subject, ex.get(), -1);
 }
 
 auto
-PemX509New(EVP_PKEY *pubkey, EVP_PKEY *privkey, const X509_NAME *issuer_name,
+PemX509New(X509 *issuer, EVP_PKEY *issuer_pkey, EVP_PKEY *subject_pkey,
            const X509_NAME *subject_name,
            const std::initializer_list<std::pair<int, std::string>> &exs,
            const std::chrono::seconds &expiry) -> SmartX509 {
@@ -169,9 +173,23 @@ PemX509New(EVP_PKEY *pubkey, EVP_PKEY *privkey, const X509_NAME *issuer_name,
     return {nullptr, nullptr};
   }
 
-  if (X509_set_issuer_name(x509.get(), issuer_name) != 1) {
-    fmt::print(std::cerr, "X509_set_issuer_name failed\n");
-    return {nullptr, nullptr};
+  if (issuer == nullptr) {
+    if (X509_set_issuer_name(x509.get(), subject_name) != 1) {
+      fmt::print(std::cerr, "X509_set_issuer_name failed\n");
+      return {nullptr, nullptr};
+    }
+  } else {
+    auto *issuer_name = X509_get_subject_name(issuer);
+
+    if (issuer_name == nullptr) {
+      fmt::print(std::cerr, "X509_get_subject_name failed\n");
+      return {nullptr, nullptr};
+    }
+
+    if (X509_set_issuer_name(x509.get(), issuer_name) != 1) {
+      fmt::print(std::cerr, "X509_set_issuer_name failed\n");
+      return {nullptr, nullptr};
+    }
   }
 
   if (X509_set_subject_name(x509.get(), subject_name) != 1) {
@@ -179,39 +197,24 @@ PemX509New(EVP_PKEY *pubkey, EVP_PKEY *privkey, const X509_NAME *issuer_name,
     return {nullptr, nullptr};
   }
 
-  if (X509_set_pubkey(x509.get(), pubkey) != 1) {
+  if (X509_set_pubkey(x509.get(), subject_pkey) != 1) {
     fmt::print(std::cerr, "X509_set_pubkey failed\n");
     return {nullptr, nullptr};
   }
 
   for (auto &&[nid, ex] : exs) {
-    if (internal::X509ExtensionAdd(x509.get(), nid, ex.data()) != 1) {
+    if (internal::X509ExtensionAdd(issuer, x509.get(), nid, ex.data()) != 1) {
       fmt::print(std::cerr, "X509ExtensionAdd failed\n");
       return {nullptr, nullptr};
     }
   }
 
-  if (X509_sign(x509.get(), privkey, nullptr) == 0) {
+  if (X509_sign(x509.get(), issuer_pkey, nullptr) == 0) {
     fmt::print(std::cerr, "X509_sign failed\n");
     return {nullptr, nullptr};
   }
 
   return x509;
-}
-
-auto
-X509NewClient(EVP_PKEY *client_key, X509 *ca, EVP_PKEY *ca_priv_key,
-              const X509_NAME *subject_name, const std::chrono::seconds &expiry)
-    -> SmartX509 {
-  auto *issuer_name = X509_get_subject_name(ca);
-
-  if (issuer_name == nullptr) {
-    fmt::print(std::cerr, "X509_get_subject_name failed\n");
-    return {nullptr, nullptr};
-  }
-
-  return PemX509New(client_key, ca_priv_key, issuer_name, subject_name, {},
-                    expiry);
 }
 
 auto
