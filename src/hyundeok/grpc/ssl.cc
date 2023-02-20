@@ -78,10 +78,10 @@ X509NameAppendEntry(X509_NAME *name, const char *field, std::string_view value)
 }
 
 auto
-X509NameNew(const std::string &country, const std::string &state,
-            const std::string &locality, const std::string &organisation,
-            const std::string &organisational_unit,
-            const std::string &common_name) -> SmartX509Name {
+X509NameNew(std::string_view country, std::string_view state,
+            std::string_view locality, std::string_view organisation,
+            std::string_view organisational_unit, std::string_view common_name)
+    -> SmartX509Name {
   SmartX509Name name{X509_NAME_new(), X509_NAME_free};
 
   if (name.get() == nullptr) {
@@ -273,17 +273,8 @@ PEMWritePrivateKey(const EVP_PKEY *pkey, const EVP_CIPHER *enc,
       pass.size(), nullptr, nullptr);
 }
 
-} // namespace internal
-
 auto
-PemX509Read(std::string_view path, std::string_view pass) -> std::string {
-  auto x509{internal::PemReadX509(path, pass)};
-
-  if (x509.get() == nullptr) {
-    fmt::print(std::cerr, "internal::X509Read failed\n");
-    return {};
-  }
-
+PemX509Read(X509 *x509) -> std::string {
   internal::SmartBio bio{BIO_new(BIO_s_mem()), BIO_free};
 
   if (bio.get() == nullptr) {
@@ -291,7 +282,7 @@ PemX509Read(std::string_view path, std::string_view pass) -> std::string {
     return {};
   }
 
-  if (PEM_write_bio_X509(bio.get(), x509.get()) != 1) {
+  if (PEM_write_bio_X509(bio.get(), x509) != 1) {
     fmt::print(std::cerr, "PEM_write_bio_X509 failed\n");
     return {};
   }
@@ -306,12 +297,26 @@ PemX509Read(std::string_view path, std::string_view pass) -> std::string {
   return {bio_buf->data, bio_buf->length};
 }
 
+} // namespace internal
+
+auto
+PemX509Read(std::string_view path, std::string_view pass) -> std::string {
+  auto x509{internal::PemReadX509(path, pass)};
+
+  if (x509.get() == nullptr) {
+    fmt::print(std::cerr, "internal::X509Read failed\n");
+    return {};
+  }
+
+  return internal::PemX509Read(x509.get());
+}
+
 auto
 PemPrivateKeyRead(std::string_view path, std::string_view pass) -> std::string {
   auto pkey{internal::PemReadPrivateKey(path, pass)};
 
   if (pkey.get() == nullptr) {
-    fmt::print(std::cerr, "internal::EvpPkeyReadPrivateKey failed\n");
+    fmt::print(std::cerr, "EvpPkeyReadPrivateKey failed\n");
     return {};
   }
 
@@ -415,6 +420,43 @@ PemPublicKeyReadHex(std::string_view path, std::string_view pass)
   }
 
   return BytesToString(pub.get(), len);
+}
+
+auto
+PemX509NewRoot(std::string_view country, std::string_view state,
+               std::string_view locality, std::string_view organisation,
+               std::string_view organisational_unit,
+               std::string_view common_name, const std::chrono::seconds &expiry)
+    -> std::string {
+  auto name{internal::X509NameNew(country, state, locality, organisation,
+                                  organisational_unit, common_name)};
+
+  if (name.get() == nullptr) {
+    fmt::print(std::cerr, "X509NameNew failed\n");
+    return {};
+  }
+
+  auto pkey{internal::EvpPkeyEd25519New()};
+
+  if (pkey.get() == nullptr) {
+    fmt::print(std::cerr, "EvpPkeyEd25519New failed\n");
+    return {};
+  }
+
+  auto x509{internal::PemX509New(
+      nullptr, pkey.get(), pkey.get(), name.get(),
+      {{NID_subject_key_identifier, "hash"},
+       {NID_authority_key_identifier, "keyid:always,issuer:always"},
+       {NID_basic_constraints, "critical,CA:TRUE"},
+       {NID_key_usage, "critical,digitalSignature,cRLSign,keyCertSign"}},
+      expiry)};
+
+  if (x509.get() == nullptr) {
+    fmt::print(std::cerr, "PemX509New failed\n");
+    return {};
+  }
+
+  return internal::PemX509Read(x509.get());
 }
 
 } // namespace hyundeok::grpc
