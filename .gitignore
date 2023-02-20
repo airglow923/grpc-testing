@@ -96,5 +96,5 @@ build/
 compile_commands.json
 
 # debug
-peda-session-gen-keys.txt
+peda-session-*.txt
 .gdb_history
