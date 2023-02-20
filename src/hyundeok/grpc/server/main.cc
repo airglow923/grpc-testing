@@ -42,8 +42,8 @@ class SslExchangeServiceImpl final : public SslExchange::Service {
 
 auto
 main(int argc, char **argv) -> int {
-  if (argc < 3) {
-    fmt::print(std::cerr, "Usage: {} PATH_TO_PEM PATH_TO_PRIVATE_KEY\n",
+  if (argc < 4) {
+    fmt::print(std::cerr, "Usage: {} SERVER_PEM SERVER_KEY ROOT_PEM\n",
                argv[0]);
     return -1;
   }
@@ -56,6 +56,7 @@ main(int argc, char **argv) -> int {
 
   auto ssl_opts{grpc::SslServerCredentialsOptions(
       GRPC_SSL_REQUEST_AND_REQUIRE_CLIENT_CERTIFICATE_AND_VERIFY)};
+  ssl_opts.pem_root_certs = PemX509Read(argv[3], "");
   ssl_opts.pem_key_cert_pairs.push_back(
       {PemPrivateKeyRead(argv[2], ""), PemX509Read(argv[1], "")});
 

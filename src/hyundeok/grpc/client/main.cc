@@ -56,15 +56,16 @@ private:
 
 auto
 main(int argc, char **argv) -> int {
-  if (argc < 3) {
-    fmt::print(std::cerr, "Usage: {} PATH_TO_PEM PATH_TO_PRIVATE_KEY\n",
+  if (argc < 4) {
+    fmt::print(std::cerr, "Usage: {} CLIENT_PEM CLIENT_KEY ROOT_PEM\n",
                argv[0]);
     return -1;
   }
 
   auto ssl_opts{grpc::SslCredentialsOptions()};
-  ssl_opts.pem_private_key = PemPrivateKeyRead(argv[2], "");
   ssl_opts.pem_cert_chain = PemX509Read(argv[1], "");
+  ssl_opts.pem_private_key = PemPrivateKeyRead(argv[2], "");
+  ssl_opts.pem_root_certs = PemX509Read(argv[3], "");
 
   auto ssl_creds{grpc::SslCredentials(ssl_opts)};
   auto channel{grpc::CreateChannel("localhost:50051", ssl_creds)};
