@@ -5,6 +5,8 @@
 #include <grpcpp/ext/proto_server_reflection_plugin.h>
 #include <grpcpp/grpcpp.h>
 #include <grpcpp/health_check_service_interface.h>
+#include <grpcpp/security/server_credentials.h>
+#include <grpcpp/security/tls_credentials_options.h>
 
 #include <fmt/format.h>
 #include <fmt/ostream.h>
@@ -13,6 +15,10 @@
 #include "hyundeok/grpc/ssl.h"
 
 #include "ssl_exchange.grpc.pb.h"
+
+using grpc_impl::experimental::TlsCredentialsOptions;
+using grpc_impl::experimental::TlsKeyMaterialsConfig;
+using grpc_impl::experimental::TlsServerCredentials;
 
 using hyundeok::grpc::GetLocalTimestampIso8601;
 using hyundeok::grpc::PemPrivateKeyRead;
@@ -48,22 +54,26 @@ main(int argc, char **argv) -> int {
     return -1;
   }
 
-  auto server_addr{fmt::format("localhost:{}", argv[1])};
-  SslExchangeServiceImpl service;
-
   grpc::EnableDefaultHealthCheckService(true);
   grpc::reflection::InitProtoReflectionServerBuilderPlugin();
 
-  auto ssl_opts{grpc::SslServerCredentialsOptions(
-      GRPC_SSL_REQUEST_AND_REQUIRE_CLIENT_CERTIFICATE_AND_VERIFY)};
-  ssl_opts.pem_root_certs = PemX509Read(argv[4], "");
-  ssl_opts.pem_key_cert_pairs.push_back(
-      {PemPrivateKeyRead(argv[3], ""), PemX509Read(argv[2], "")});
+  auto key_materials{std::make_shared<TlsKeyMaterialsConfig>()};
 
-  auto ssl_creds{grpc::SslServerCredentials(ssl_opts)};
+  key_materials->set_key_materials(
+      PemX509Read(argv[4], ""),
+      {{PemPrivateKeyRead(argv[3], ""), PemX509Read(argv[2], "")}});
 
+  auto tls_opts{TlsCredentialsOptions(
+      GRPC_SSL_REQUEST_AND_REQUIRE_CLIENT_CERTIFICATE_AND_VERIFY, key_materials,
+      nullptr)};
+
+  auto tls_creds{TlsServerCredentials(tls_opts)};
+
+  auto server_addr{fmt::format("localhost:{}", argv[1])};
   grpc::ServerBuilder builder;
-  builder.AddListeningPort(server_addr, ssl_creds);
+  SslExchangeServiceImpl service;
+
+  builder.AddListeningPort(server_addr, tls_creds);
   builder.RegisterService(&service);
 
   std::unique_ptr<grpc::Server> server(builder.BuildAndStart());

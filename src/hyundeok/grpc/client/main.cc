@@ -5,6 +5,8 @@
 #include <thread>
 
 #include <grpcpp/grpcpp.h>
+#include <grpcpp/security/credentials.h>
+#include <grpcpp/security/tls_credentials_options.h>
 
 #include <fmt/format.h>
 #include <fmt/ostream.h>
@@ -13,6 +15,10 @@
 #include "hyundeok/grpc/ssl.h"
 
 #include "ssl_exchange.grpc.pb.h"
+
+using grpc_impl::experimental::TlsCredentials;
+using grpc_impl::experimental::TlsCredentialsOptions;
+using grpc_impl::experimental::TlsKeyMaterialsConfig;
 
 using hyundeok::grpc::GetLocalTimestampIso8601;
 using hyundeok::grpc::PemPrivateKeyRead;
@@ -66,14 +72,18 @@ main(int argc, char **argv) -> int {
     return -1;
   }
 
-  auto ssl_opts{grpc::SslCredentialsOptions()};
-  ssl_opts.pem_cert_chain = PemX509Read(argv[2], "");
-  ssl_opts.pem_private_key = PemPrivateKeyRead(argv[3], "");
-  ssl_opts.pem_root_certs = PemX509Read(argv[4], "");
+  auto key_materials{std::make_shared<TlsKeyMaterialsConfig>()};
 
-  auto ssl_creds{grpc::SslCredentials(ssl_opts)};
+  key_materials->set_key_materials(
+      PemX509Read(argv[4], ""),
+      {{PemPrivateKeyRead(argv[3], ""), PemX509Read(argv[2], "")}});
+
+  auto tls_opts{TlsCredentialsOptions(GRPC_TLS_SERVER_VERIFICATION,
+                                      key_materials, nullptr, nullptr)};
+
+  auto tls_creds{TlsCredentials(tls_opts)};
   auto channel{
-      grpc::CreateChannel(fmt::format("localhost:{}", argv[1]), ssl_creds)};
+      grpc::CreateChannel(fmt::format("localhost:{}", argv[1]), tls_creds)};
 
   SslExchangeClient client{channel};
 
