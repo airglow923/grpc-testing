@@ -412,10 +412,8 @@ PemPublicKeyReadHex(std::string_view path, std::string_view pass)
     return {};
   }
 
-  int ret = EVP_PKEY_get_raw_public_key(pkey.get(), pub.get(), &len);
-
-  if (ret != 1) {
-    fmt::print("EVP_PKEY_get_raw_public_key failed\n");
+  if (EVP_PKEY_get_raw_public_key(pkey.get(), pub.get(), &len) != 1) {
+    fmt::print(std::cerr, "EVP_PKEY_get_raw_public_key failed\n");
     return {};
   }
 
