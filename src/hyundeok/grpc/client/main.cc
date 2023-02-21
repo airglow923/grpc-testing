@@ -2,6 +2,7 @@
 #include <memory>
 #include <string>
 #include <string_view>
+#include <thread>
 
 #include <grpcpp/grpcpp.h>
 
@@ -31,6 +32,7 @@ public:
 
     client_pubkey.set_pubkey(PemPublicKeyReadHex(cert_path, ""));
 
+    fmt::print("Thread ID: {}\n", std::this_thread::get_id());
     fmt::print("Sending client public key:  {} on {}\n", client_pubkey.pubkey(),
                GetLocalTimestampIso8601());
 
@@ -56,21 +58,27 @@ private:
 
 auto
 main(int argc, char **argv) -> int {
-  if (argc < 4) {
-    fmt::print(std::cerr, "Usage: {} CLIENT_PEM CLIENT_KEY ROOT_PEM\n",
+  using namespace std::chrono_literals;
+
+  if (argc < 5) {
+    fmt::print(std::cerr, "Usage: {} PORT CLIENT_PEM CLIENT_KEY ROOT_PEM\n",
                argv[0]);
     return -1;
   }
 
   auto ssl_opts{grpc::SslCredentialsOptions()};
-  ssl_opts.pem_cert_chain = PemX509Read(argv[1], "");
-  ssl_opts.pem_private_key = PemPrivateKeyRead(argv[2], "");
-  ssl_opts.pem_root_certs = PemX509Read(argv[3], "");
+  ssl_opts.pem_cert_chain = PemX509Read(argv[2], "");
+  ssl_opts.pem_private_key = PemPrivateKeyRead(argv[3], "");
+  ssl_opts.pem_root_certs = PemX509Read(argv[4], "");
 
   auto ssl_creds{grpc::SslCredentials(ssl_opts)};
-  auto channel{grpc::CreateChannel("localhost:50051", ssl_creds)};
+  auto channel{
+      grpc::CreateChannel(fmt::format("localhost:{}", argv[1]), ssl_creds)};
 
   SslExchangeClient client{channel};
 
-  fmt::print("{}\n", client.ExchangeSslPublicKey(argv[1]));
+  for (;;) {
+    fmt::print("{}\n", client.ExchangeSslPublicKey(argv[2]));
+    std::this_thread::sleep_for(2s);
+  }
 }
