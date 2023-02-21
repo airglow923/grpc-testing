@@ -1,4 +1,4 @@
-set(COMMON_WARNING_FLAGS -Wall -Wextra -Werror -Wcast-qual)
+set(COMMON_WARNING_FLAGS -Wall -Wextra -Werror -Wcast-qual -Wno-comment)
 
 set(COMMON_COMPILE_FLAGS ${COMMON_WARNING_FLAGS} -march=native -flto)
 
