@@ -4,6 +4,7 @@
 #include <string_view>
 #include <thread>
 
+#include <grpc/grpc_security_constants.h>
 #include <grpcpp/grpcpp.h>
 #include <grpcpp/security/credentials.h>
 #include <grpcpp/security/tls_credentials_options.h>
